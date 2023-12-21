@@ -6,7 +6,7 @@ use tracing::{error, info};
 
 #[repr(u8)]
 enum WakeState {
-    Sleep = 0x01,
+    Sleep,
     Unknown(u8),
 }
 
