@@ -4,7 +4,8 @@ use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info};
 
-#[repr(u8)]
+const MAGIC_PACKET: u8 = 0x77;
+
 enum WakeState {
     Sleep,
     Unknown(u8),
@@ -13,7 +14,7 @@ enum WakeState {
 impl From<u8> for WakeState {
     fn from(value: u8) -> Self {
         match value {
-            0x01 => WakeState::Sleep,
+            MAGIC_PACKET => WakeState::Sleep,
             _ => WakeState::Unknown(value),
         }
     }
@@ -38,7 +39,7 @@ async fn process(mut socket: TcpStream) -> anyhow::Result<()> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
-    let addr = "127.0.0.1:8080".parse::<SocketAddr>()?;
+    let addr = "0.0.0.0:8253".parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr).await?;
     info!("Listening on port: {}", addr.port());
     loop {

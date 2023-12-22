@@ -1,0 +1,16 @@
+[Unit]
+Description=nemui sleep service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/home/frahz/.local/bin/nemui
+Type=simple
+Restart=always
+RestartSec=1
+StandardOutput=syslog
+StandarError=syslog
+SyslogIdentifier=nemui
+
+[Install]
+WantedBy=multi-user.target
