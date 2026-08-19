@@ -1,35 +1,35 @@
 {
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
-  };
+  inputs.nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
 
-  outputs = {
-    self,
-    nixpkgs,
-    rust-overlay,
-    ...
-  }: let
-    systems = [
-      "x86_64-linux"
-      "aarch64-linux"
-      "aarch64-darwin"
-    ];
-    forEachSystem = nixpkgs.lib.genAttrs systems;
-    pkgsForEach = forEachSystem (system:
-      import nixpkgs {
-        inherit system;
-        overlays = [rust-overlay.overlays.default];
+  outputs =
+    {
+      self,
+      nixpkgs,
+      ...
+    }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
+      forAllSystems =
+        function: nixpkgs.lib.genAttrs systems (system: function nixpkgs.legacyPackages.${system});
+
+    in
+    {
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          packages = builtins.attrValues {
+            inherit (pkgs)
+              cargo
+              clippy
+              rustc
+              rustfmt
+              ;
+          };
+        };
       });
-  in {
-    devShells = forEachSystem (system: let
-      pkgs = pkgsForEach.${system};
-    in {
-      default = pkgs.mkShell {
-        buildInputs = [
-          pkgs.rust-bin.stable.latest.default
-        ];
-      };
-    });
-  };
+
+    };
 }
