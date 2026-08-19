@@ -1,8 +1,7 @@
-use std::net::SocketAddr;
+use std::io::{self, Read};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::process::Command;
-use tokio::io::AsyncReadExt;
-use tokio::net::{TcpListener, TcpStream};
-use tracing::{error, info};
+use std::thread;
 
 const MAGIC_PACKET: u8 = 0x77;
 
@@ -20,33 +19,35 @@ impl From<u8> for WakeState {
     }
 }
 
-async fn process(mut socket: TcpStream) -> anyhow::Result<()> {
-    let state: WakeState = socket.read_u8().await?.into();
+fn process(mut socket: TcpStream) -> io::Result<()> {
+    let mut packet = [0];
+    socket.read_exact(&mut packet)?;
+    let state: WakeState = packet[0].into();
     match state {
         WakeState::Sleep => {
-            info!("Putting the server to sleep");
+            eprintln!("Putting the server to sleep");
             Command::new("systemctl").arg("suspend").output()?;
-            info!("Server is now awake");
+            eprintln!("Server is now awake");
         }
         WakeState::Unknown(value) => {
-            error!("Unknown command: {:#04x}", value);
+            eprintln!("Unknown command: {value:#04x}");
         }
     };
 
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
-    let addr = "0.0.0.0:8253".parse::<SocketAddr>()?;
-    let listener = TcpListener::bind(&addr).await?;
-    info!("Listening on port: {}", addr.port());
+fn main() -> io::Result<()> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8253));
+    let listener = TcpListener::bind(addr)?;
+    eprintln!("Listening on port: {}", addr.port());
     loop {
-        let (socket, _) = listener.accept().await?;
-        tokio::spawn(async move {
-            info!("Got a connection");
-            let _ = process(socket).await;
+        let (socket, _) = listener.accept()?;
+        thread::spawn(move || {
+            eprintln!("Got a connection");
+            if let Err(error) = process(socket) {
+                eprintln!("Connection error: {error}");
+            }
         });
     }
 }
